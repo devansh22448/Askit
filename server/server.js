@@ -1,36 +1,45 @@
-// server/server.js
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config();
-
+const path = require("path");
 const app = express();
+const bodyParser = require("body-parser");
+const PORT = 80;
+const db = require("./db");
+const router = require("./routes");
+
+//database connection
+
+db.connect();
+
+//middle ware
+app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
+
+//cors
+app.use((req, res, next) => {
+  req.header("Access-Control-Allow-Origin", "*");
+  req.header("Access-Control-Allow-Headers", "*");
+  next();
+});
+
+//routes
+
+app.use("/api", router);
+
+app.use("/uploads", express.static(path.join(__dirname, "/../uploads")));
+app.use(express.static(path.join(__dirname, "/../frontend/build")));
+
+app.get("*", (req, res) => {
+  try {
+    res.sendFile(path.join(`${__dirname}/../frontend/build/index.html`));
+  } catch (e) {
+    res.send("Oops! unexpected error");
+  }
+});
+
 app.use(cors());
-app.use(express.json());
 
-// Connect MongoDB
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.log("❌ MongoDB Error:", err));
-
-// Test Route
-app.get("/", (req, res) => {
-  res.send("AskIt-Q API is running");
+//server listening
+app.listen(process.env.PORT || PORT, () => {
+  console.log(`Listening on port no ${PORT}`);
 });
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
-const authRoutes = require("./routes/authRoutes");
-const questionRoutes = require("./routes/questionRoutes");
-const answerRoutes = require("./routes/answerRoutes");
-
-// Use routes
-app.use("/api/auth", authRoutes);
-app.use("/api/questions", questionRoutes);
-app.use("/api/answers", answerRoutes);
